@@ -1,0 +1,147 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local point = nil
+local pointPart = nil
+local active = false
+local RANGE = 15
+
+-- GUI
+local gui = Instance.new("ScreenGui")
+gui.Name = "BaseProtectorGui"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.fromScale(0.32, 0.28)
+frame.Position = UDim2.fromScale(0.34, 0.32)
+frame.BackgroundColor3 = Color3.fromRGB(10,10,10)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Selectable = true
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0,18)
+
+local stroke = Instance.new("UIStroke", frame)
+stroke.Color = Color3.fromRGB(255,0,180)
+stroke.Thickness = 2
+
+-- Draggable (Mouse + Touch)
+do
+	local dragging = false
+	local dragStart, startPos
+
+	frame.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1
+		or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+			dragStart = input.Position
+			startPos = frame.Position
+		end
+	end)
+
+	frame.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1
+		or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = false
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input)
+		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement
+		or input.UserInputType == Enum.UserInputType.Touch) then
+			local delta = input.Position - dragStart
+			frame.Position = UDim2.new(
+				startPos.X.Scale,
+				startPos.X.Offset + delta.X,
+				startPos.Y.Scale,
+				startPos.Y.Offset + delta.Y
+			)
+		end
+	end)
+end
+
+-- Title
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.fromScale(1,0.22)
+title.BackgroundTransparency = 1
+title.Text = "snow hub | base protector"
+title.Font = Enum.Font.GothamBold
+title.TextScaled = true
+title.TextColor3 = Color3.fromRGB(255,0,180)
+
+-- Set Point Button
+local setPoint = Instance.new("TextButton", frame)
+setPoint.Position = UDim2.fromScale(0.1,0.35)
+setPoint.Size = UDim2.fromScale(0.8,0.22)
+setPoint.Text = "SET POINT"
+setPoint.Font = Enum.Font.GothamBold
+setPoint.TextScaled = true
+setPoint.BackgroundColor3 = Color3.fromRGB(255,0,180)
+setPoint.TextColor3 = Color3.new(0,0,0)
+Instance.new("UICorner", setPoint).CornerRadius = UDim.new(0,14)
+
+-- Activate Button
+local toggle = Instance.new("TextButton", frame)
+toggle.Position = UDim2.fromScale(0.1,0.62)
+toggle.Size = UDim2.fromScale(0.8,0.22)
+toggle.Text = "ACTIVATE"
+toggle.Font = Enum.Font.GothamBold
+toggle.TextScaled = true
+toggle.BackgroundColor3 = Color3.fromRGB(0,255,0)
+toggle.TextColor3 = Color3.new(0,0,0)
+Instance.new("UICorner", toggle).CornerRadius = UDim.new(0,14)
+
+-- Create / Update Visible Point
+local function createPoint(pos)
+	if pointPart then
+		pointPart:Destroy()
+	end
+
+	pointPart = Instance.new("Part")
+	pointPart.Shape = Enum.PartType.Ball
+	pointPart.Size = Vector3.new(2,2,2)
+	pointPart.Anchored = true
+	pointPart.CanCollide = false
+	pointPart.Material = Enum.Material.Neon
+	pointPart.Color = Color3.fromRGB(255,0,180)
+	pointPart.Position = pos
+	pointPart.Name = "BaseProtectorPoint"
+	pointPart.Parent = workspace
+end
+
+-- Set Point Logic
+setPoint.MouseButton1Click:Connect(function()
+	local char = player.Character
+	if char and char:FindFirstChild("HumanoidRootPart") then
+		point = char.HumanoidRootPart.Position
+		createPoint(point)
+	end
+end)
+
+-- Toggle Logic
+toggle.MouseButton1Click:Connect(function()
+	active = not active
+	if active then
+		toggle.Text = "DEACTIVATE"
+		toggle.BackgroundColor3 = Color3.fromRGB(255,0,0)
+	else
+		toggle.Text = "ACTIVATE"
+		toggle.BackgroundColor3 = Color3.fromRGB(0,255,0)
+	end
+end)
+
+-- Check Players
+RunService.Heartbeat:Connect(function()
+	if not active or not point then return end
+
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr ~= player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+			local dist = (plr.Character.HumanoidRootPart.Position - point).Magnitude
+			if dist <= RANGE then
+				player:Kick("snow hub | base protector triggered")
+			end
+		end
+	end
+end)
